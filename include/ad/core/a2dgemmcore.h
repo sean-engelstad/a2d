@@ -7,16 +7,13 @@
 
 namespace A2D {
 
-template <bool B, int i, int j>
-struct int_conditional {};
+template <bool B, int i, int j> struct int_conditional {};
 
-template <int i, int j>
-struct int_conditional<true, i, j> {
+template <int i, int j> struct int_conditional<true, i, j> {
   static constexpr int value = i;
 };
 
-template <int i, int j>
-struct int_conditional<false, i, j> {
+template <int i, int j> struct int_conditional<false, i, j> {
   static constexpr int value = j;
 };
 
@@ -63,6 +60,42 @@ A2D_FUNCTION void MatMatMultCore3x3(const T A[], const T B[], T C[]) {
     C[7] = A[2] * B[3] + A[5] * B[4] + A[8] * B[5];
     C[8] = A[2] * B[6] + A[5] * B[7] + A[8] * B[8];
   }
+}
+
+template <typename T>
+A2D_FUNCTION T Mat3x3VecTripleProduct(const T x[], const T A[], const T y[]) {
+  // z = x^T A y where A is 3x3 and x,y are 3x1 vectors
+  return x[0] * (A[0] * y[0] + A[1] * y[1] + A[2] * y[2]) +
+         x[1] * (A[3] * y[0] + A[4] * y[1] + A[5] * y[2]) +
+         x[2] * (A[6] * y[0] + A[7] * y[1] + A[8] * y[2]);
+}
+
+template <typename T>
+A2D_FUNCTION T Mat3x3MatTripleProduct(int i, int j, const T x[], const T A[],
+                                      const T y[]) {
+  // X^T * A * Y => some entries out of that.. (column i of X and column j of Y)
+  return x[i] * (A[0] * y[j] + A[1] * y[3 + j] + A[2] * y[6 + j]) +
+         x[3 + i] * (A[3] * y[j] + A[4] * y[3 + j] + A[5] * y[6 + j]) +
+         x[6 + i] * (A[6] * y[j] + A[7] * y[3 + j] + A[8] * y[6 + j]);
+}
+
+template <typename T>
+A2D_FUNCTION void Mat3x3MatTripleProductSens(int i, int j, const T x[],
+                                             const T y[], const T out_sens,
+                                             T Ab[]) {
+  // X^T * A * Y => some entries out of that.. (column i of X and column j of Y)
+  T scale = out_sens * x[i];
+  Ab[0] += scale * y[j];
+  Ab[1] += scale * y[3 + j];
+  Ab[2] += scale * y[6 + j];
+  scale = out_sens * x[3 + i];
+  Ab[3] += scale * y[j];
+  Ab[4] += scale * y[3 + j];
+  Ab[5] += scale * y[6 + j];
+  scale = out_sens * x[6 + i];
+  Ab[6] += scale * y[j];
+  Ab[7] += scale * y[3 + j];
+  Ab[8] += scale * y[6 + j];
 }
 
 template <typename T, MatOp opA = MatOp::NORMAL, MatOp opB = MatOp::NORMAL>
@@ -255,7 +288,7 @@ A2D_FUNCTION void MatMatMultCoreGeneral(const T A[], const T B[], T C[]) {
           }
         }
       }
-    } else {  // opB == MatOp::TRANSPOSE
+    } else { // opB == MatOp::TRANSPOSE
       for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++, C++) {
           const T *a = &A[Ancols * i];
@@ -275,7 +308,7 @@ A2D_FUNCTION void MatMatMultCoreGeneral(const T A[], const T B[], T C[]) {
         }
       }
     }
-  } else {  // opA == MatOp::TRANSPOSE
+  } else { // opA == MatOp::TRANSPOSE
     if (opB == MatOp::NORMAL) {
       for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++, C++) {
@@ -295,7 +328,7 @@ A2D_FUNCTION void MatMatMultCoreGeneral(const T A[], const T B[], T C[]) {
           }
         }
       }
-    } else {  // opB == MatOp::TRANSPOSE
+    } else { // opB == MatOp::TRANSPOSE
       for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++, C++) {
           const T *a = &A[i];
@@ -373,7 +406,7 @@ A2D_FUNCTION void MatMatMultScaleCoreGeneral(const T alpha, const T A[],
           }
         }
       }
-    } else {  // opB == MatOp::TRANSPOSE
+    } else { // opB == MatOp::TRANSPOSE
       for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++, C++) {
           const T *a = &A[Ancols * i];
@@ -393,7 +426,7 @@ A2D_FUNCTION void MatMatMultScaleCoreGeneral(const T alpha, const T A[],
         }
       }
     }
-  } else {  // opA == MatOp::TRANSPOSE
+  } else { // opA == MatOp::TRANSPOSE
     if (opB == MatOp::NORMAL) {
       for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++, C++) {
@@ -413,7 +446,7 @@ A2D_FUNCTION void MatMatMultScaleCoreGeneral(const T alpha, const T A[],
           }
         }
       }
-    } else {  // opB == MatOp::TRANSPOSE
+    } else { // opB == MatOp::TRANSPOSE
       for (int i = 0; i < M; i++) {
         for (int j = 0; j < N; j++, C++) {
           const T *a = &A[i];
@@ -488,7 +521,7 @@ A2D_FUNCTION void MatMatMultCore(const T A[], const T B[], T C[]) {
     } else {
       MatMatMultCore3x3<T, opA, opB>(A, B, C);
     }
-  } else {  // The general fallback implmentation
+  } else { // The general fallback implmentation
     MatMatMultCoreGeneral<T, Anrows, Ancols, Bnrows, Bncols, Cnrows, Cncols,
                           opA, opB, additive>(A, B, C);
   }
@@ -519,7 +552,7 @@ inline void MatMatMultScaleCore(T alpha, const T A[], const T B[], T C[]) {
     } else {
       MatMatMultCore3x3Scale<T, opA, opB>(alpha, A, B, C);
     }
-  } else {  // The general fallback implmentation
+  } else { // The general fallback implmentation
     MatMatMultScaleCoreGeneral<T, Anrows, Ancols, Bnrows, Bncols, Cnrows,
                                Cncols, opA, opB, additive>(alpha, A, B, C);
   }
@@ -879,9 +912,9 @@ A2D_FUNCTION void SMatMatMultCoreGeneral(const T SA[], const T B[], T C[]) {
                    B[j * Bncols + k];
         }
         if (additive) {
-          C[i * Bncols + k] += value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] += value; // C: Anrows-by-Bncols
         } else {
-          C[i * Bncols + k] = value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] = value; // C: Anrows-by-Bncols
         }
       }
     }
@@ -894,9 +927,9 @@ A2D_FUNCTION void SMatMatMultCoreGeneral(const T SA[], const T B[], T C[]) {
                    B[k * Bncols + j];
         }
         if (additive) {
-          C[i * Bnrows + k] += value;  // C: Anrows-by-Bnrows
+          C[i * Bnrows + k] += value; // C: Anrows-by-Bnrows
         } else {
-          C[i * Bnrows + k] = value;  // C: Anrows-by-Bnrows
+          C[i * Bnrows + k] = value; // C: Anrows-by-Bnrows
         }
       }
     }
@@ -920,9 +953,9 @@ A2D_FUNCTION void SMatMatMultScaleCoreGeneral(const T alpha, const T SA[],
                    B[j * Bncols + k];
         }
         if (additive) {
-          C[i * Bncols + k] += alpha * value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] += alpha * value; // C: Anrows-by-Bncols
         } else {
-          C[i * Bncols + k] = alpha * value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] = alpha * value; // C: Anrows-by-Bncols
         }
       }
     }
@@ -935,9 +968,9 @@ A2D_FUNCTION void SMatMatMultScaleCoreGeneral(const T alpha, const T SA[],
                    B[k * Bncols + j];
         }
         if (additive) {
-          C[i * Bnrows + k] += alpha * value;  // C: Anrows-by-Bnrows
+          C[i * Bnrows + k] += alpha * value; // C: Anrows-by-Bnrows
         } else {
-          C[i * Bnrows + k] = alpha * value;  // C: Anrows-by-Bnrows
+          C[i * Bnrows + k] = alpha * value; // C: Anrows-by-Bnrows
         }
       }
     }
@@ -969,7 +1002,7 @@ A2D_FUNCTION void SMatMatMultCore(const T S[], const T B[], T C[]) {
     } else {
       SMatMatMultCore3x3<T, opB>(S, B, C);
     }
-  } else {  // The general fallback implmentation
+  } else { // The general fallback implmentation
     SMatMatMultCoreGeneral<T, Anrows, Bnrows, Bncols, opB, additive>(S, B, C);
   }
 }
@@ -999,7 +1032,7 @@ A2D_FUNCTION void SMatMatMultScaleCore(const T alpha, const T S[], const T B[],
     } else {
       SMatMatMultCore3x3Scale<T, opB>(alpha, S, B, C);
     }
-  } else {  // The general fallback implmentation
+  } else { // The general fallback implmentation
     SMatMatMultScaleCoreGeneral<T, Anrows, Bnrows, Bncols, opB, additive>(
         alpha, S, B, C);
   }
@@ -1185,9 +1218,9 @@ A2D_FUNCTION void MatSMatMultCoreGeneral(const T A[], const T SB[], T C[]) {
                    SB[j >= k ? k + j * (j + 1) / 2 : j + k * (k + 1) / 2];
         }
         if (additive) {
-          C[i * Bncols + k] += value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] += value; // C: Anrows-by-Bncols
         } else {
-          C[i * Bncols + k] = value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] = value; // C: Anrows-by-Bncols
         }
       }
     }
@@ -1200,9 +1233,9 @@ A2D_FUNCTION void MatSMatMultCoreGeneral(const T A[], const T SB[], T C[]) {
                    SB[j >= k ? k + j * (j + 1) / 2 : j + k * (k + 1) / 2];
         }
         if (additive) {
-          C[i * Bncols + k] += value;  // C: Ancols-by-Bncols
+          C[i * Bncols + k] += value; // C: Ancols-by-Bncols
         } else {
-          C[i * Bncols + k] = value;  // C: Ancols-by-Bncols
+          C[i * Bncols + k] = value; // C: Ancols-by-Bncols
         }
       }
     }
@@ -1226,9 +1259,9 @@ A2D_FUNCTION void MatSMatMultScaleCoreGeneral(const T alpha, const T A[],
                    SB[j >= k ? k + j * (j + 1) / 2 : j + k * (k + 1) / 2];
         }
         if (additive) {
-          C[i * Bncols + k] += alpha * value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] += alpha * value; // C: Anrows-by-Bncols
         } else {
-          C[i * Bncols + k] = alpha * value;  // C: Anrows-by-Bncols
+          C[i * Bncols + k] = alpha * value; // C: Anrows-by-Bncols
         }
       }
     }
@@ -1241,9 +1274,9 @@ A2D_FUNCTION void MatSMatMultScaleCoreGeneral(const T alpha, const T A[],
                    SB[j >= k ? k + j * (j + 1) / 2 : j + k * (k + 1) / 2];
         }
         if (additive) {
-          C[i * Bncols + k] += alpha * value;  // C: Ancols-by-Bncols
+          C[i * Bncols + k] += alpha * value; // C: Ancols-by-Bncols
         } else {
-          C[i * Bncols + k] = alpha * value;  // C: Ancols-by-Bncols
+          C[i * Bncols + k] = alpha * value; // C: Ancols-by-Bncols
         }
       }
     }
@@ -1275,7 +1308,7 @@ A2D_FUNCTION void MatSMatMultCore(const T A[], const T S[], T C[]) {
     } else {
       MatSMatMultCore3x3<T, opA>(A, S, C);
     }
-  } else {  // The general fallback implmentation
+  } else { // The general fallback implmentation
     MatSMatMultCoreGeneral<T, Anrows, Ancols, Bnrows, opA, additive>(A, S, C);
   }
 }
@@ -1306,11 +1339,11 @@ A2D_FUNCTION void MatSMatMultScaleCore(const T alpha, const T A[], const T S[],
     } else {
       MatSMatMultCore3x3Scale<T, opA>(alpha, A, S, C);
     }
-  } else {  // The general fallback implmentation
+  } else { // The general fallback implmentation
     MatSMatMultScaleCoreGeneral<T, Anrows, Ancols, Bnrows, opA, additive>(
         alpha, A, S, C);
   }
 }
 
-}  // namespace A2D
-#endif  // A2D_GEMMCORE_H
+} // namespace A2D
+#endif // A2D_GEMMCORE_H
